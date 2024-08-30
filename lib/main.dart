@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:gallery_saver/gallery_saver.dart';
+import 'package:camera_avfoundation/camera_avfoundation.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,7 +33,10 @@ class MyApp extends StatelessWidget {
                         child: IconButton(
                           icon: const Icon(Icons.camera_alt_rounded),
                           color: Colors.white,
-                          onPressed: (){},),
+                          onPressed: () async{
+                            await _pickCamera();
+                          },
+                        ),
                       )
                   ),
                 ],
@@ -40,5 +46,13 @@ class MyApp extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+Future<void> _pickCamera() async{
+  final ImagePicker picker = ImagePicker();
+  final XFile? imageFile = await picker.pickImage(source: ImageSource.camera);
+  if (imageFile != null){
+    await GallerySaver.saveImage(imageFile.path, albumName: 'MyAppAlbum');
   }
 }
