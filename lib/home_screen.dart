@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:gallery_saver/gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:get/get.dart';
+import 'camera_controller.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
+  HomeScreen({super.key});
+  final CameraController cameraController = Get.put(CameraController());
+  File? selectedImage;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -17,6 +20,22 @@ class HomeScreen extends StatelessWidget {
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Container(
+                  height: 450,
+                  width: 350,
+                  color: Color(0xFFF1F1F1),
+                  child: Obx(()=>
+                    cameraController.imageFile.value != null
+                        ? Image.file(
+                      selectedImage = File(cameraController.imageFile.value!.path),
+                      fit: BoxFit.fill,
+                    )
+                        : const Center(
+                      child: Text('adf'),
+                    )
+                  )
+                ),
+                const SizedBox(height: 8),
                 const Text(
                   '하단 카메라 버튼을 눌러주세요',
                   style: TextStyle(
@@ -50,38 +69,36 @@ class HomeScreen extends StatelessWidget {
 
   Future<void> _handleCameraPermission(BuildContext context) async {
     PermissionStatus status = await Permission.camera.status;
+    debugPrint('Initial camera permission status: $status');
 
     if (status.isGranted) {
-      // 카메라 접근이 허용되었을 때 카메라를 열고 사진을 찍습니다.
-      await _pickCamera();
-    } else if (status.isDenied) {
-      // 처음 거부했을 때 다시 권한 요청
+      debugPrint('Camera permission granted.');
+      await cameraController.pickCamera();
+    } else if (status.isDenied || status.isRestricted || status.isLimited || status.isPermanentlyDenied) {
+      // 권한이 제한된 상태 또는 거부된 경우
+      debugPrint('Requesting camera permission...');
       status = await Permission.camera.request();
+      debugPrint('New camera permission status: $status');
       if (status.isGranted) {
-        await _pickCamera(); // 권한이 다시 허용되었을 때 카메라 작동
+        await cameraController.pickCamera();
       } else if (status.isPermanentlyDenied) {
         if(context.mounted) {
-          // 권한이 영구적으로 거부되었을 때 설정으로 이동하는 바텀시트 생성
           _showPermissionBottomSheet(context);
         }
       }
-    } else if (status.isPermanentlyDenied) {
-      if(context.mounted) {
-        // 이미 영구적으로 거부된 상태일 때 설정으로 이동하는 바텀시트 생성
-        _showPermissionBottomSheet(context);
-      }
     }
   }
 
-  Future<void> _pickCamera() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? imageFile = await picker.pickImage(source: ImageSource.camera);
-
-    if (imageFile != null) {
-      await GallerySaver.saveImage(imageFile.path, albumName: 'MyAppAlbum');
-      debugPrint('Image saved to gallery: ${imageFile.path}');
-    }
-  }
+  // 사진 저장 기능
+  // Future<void> _pickCamera() async {
+  //   final ImagePicker picker = ImagePicker();
+  //   final XFile? imageFile = await picker.pickImage(source: ImageSource.camera);
+  //
+  //   if (imageFile != null) {
+  //     await GallerySaver.saveImage(imageFile.path, albumName: 'MyAppAlbum');
+  //     debugPrint('Image saved to gallery: ${imageFile.path}');
+  //   }
+  // }
 
   void _showPermissionBottomSheet(BuildContext context) {
     showModalBottomSheet(
